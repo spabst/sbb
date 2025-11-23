@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SBB Transport Departures</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .card {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        }
+
+        .search-section {
+            padding: 30px;
+            background: linear-gradient(to bottom, #f8f9fa, white);
+            border-bottom: 2px solid #e9ecef;
+            border-radius: 16px 16px 0 0;
+        }
+
+        .search-box {
+            position: relative;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 16px 20px;
+            font-size: 16px;
+            border: 2px solid #e9ecef;
+            border-radius: 12px;
+            outline: none;
+            transition: all 0.3s ease;
+        }
+
+        .search-input:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .suggestions {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 2px solid #e9ecef;
+            border-top: none;
+            border-radius: 0 0 12px 12px;
+            max-height: 300px;
+            overflow-y: auto;
+            z-index: 1000;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .suggestion-item {
+            padding: 16px 20px;
+            cursor: pointer;
+            transition: background 0.2s ease;
+            border-bottom: 1px solid #f1f3f5;
+        }
+
+        .suggestion-item:last-child {
+            border-bottom: none;
+        }
+
+        .suggestion-item:hover {
+            background: #f8f9fa;
+        }
+
+        .suggestion-name {
+            font-weight: 600;
+            color: #212529;
+            margin-bottom: 4px;
+        }
+
+        .suggestion-location {
+            font-size: 14px;
+            color: #6c757d;
+        }
+
+        .departures-section {
+            padding: 20px;
+            border-radius: 0 0 16px 16px;
+        }
+
+        .selected-station {
+            text-align: center;
+            padding: 20px;
+            background: #f8f9fa;
+            margin-bottom: 20px;
+            border-radius: 12px;
+        }
+
+        .selected-station h2 {
+            color: #212529;
+            font-size: 1.5rem;
+        }
+
+        .refresh-button {
+            margin-top: 12px;
+            padding: 8px 20px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.3s ease;
+        }
+
+        .refresh-button:hover {
+            background: #5568d3;
+        }
+
+        .departure-list {
+            list-style: none;
+        }
+
+        .departure-item {
+            display: flex;
+            align-items: center;
+            padding: 16px;
+            border-bottom: 1px solid #e9ecef;
+            transition: background 0.2s ease;
+        }
+
+        .departure-item:last-child {
+            border-bottom: none;
+        }
+
+        .departure-item:hover {
+            background: #f8f9fa;
+        }
+
+        .transport-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: white;
+            margin-right: 16px;
+            flex-shrink: 0;
+        }
+
+        .icon-train { background: linear-gradient(135deg, #ec4899, #be185d); }
+        .icon-bus { background: linear-gradient(135deg, #f59e0b, #d97706); }
+        .icon-tram { background: linear-gradient(135deg, #10b981, #059669); }
+        .icon-ship { background: linear-gradient(135deg, #3b82f6, #1d4ed8); }
+        .icon-cablecar { background: linear-gradient(135deg, #8b5cf6, #6d28d9); }
+        .icon-default { background: linear-gradient(135deg, #6b7280, #4b5563); }
+
+        .departure-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .line-number {
+            font-weight: 700;
+            font-size: 18px;
+            color: #212529;
+            margin-bottom: 4px;
+        }
+
+        .destination {
+            color: #6c757d;
+            font-size: 14px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .time-info {
+            text-align: right;
+            margin-left: 16px;
+            flex-shrink: 0;
+        }
+
+        .departure-time {
+            font-size: 20px;
+            font-weight: 700;
+            color: #212529;
+            margin-bottom: 4px;
+        }
+
+        .time-until {
+            font-size: 14px;
+            color: #667eea;
+            font-weight: 600;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #6c757d;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #e9ecef;
+            border-top-color: #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 16px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #6c757d;
+        }
+
+        .empty-state-icon {
+            font-size: 64px;
+            margin-bottom: 16px;
+            opacity: 0.3;
+        }
+
+        .platform {
+            font-size: 12px;
+            color: #6c757d;
+            margin-top: 4px;
+        }
+
+        .delay {
+            color: #dc2626;
+            font-weight: 600;
+            font-size: 12px;
+        }
+
+        .error-message {
+            background: #fee2e2;
+            border: 2px solid #fecaca;
+            color: #991b1b;
+            padding: 16px;
+            border-radius: 12px;
+            margin: 16px 0;
+            text-align: center;
+            font-weight: 500;
+        }
+
+        .error-icon {
+            font-size: 24px;
+            margin-bottom: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        function TransportApp() {
+            const [searchQuery, setSearchQuery] = useState('');
+            const [suggestions, setSuggestions] = useState([]);
+            const [selectedStation, setSelectedStation] = useState(null);
+            const [departures, setDepartures] = useState([]);
+            const [loading, setLoading] = useState(false);
+            const [showSuggestions, setShowSuggestions] = useState(false);
+            const [error, setError] = useState(null);
+            const searchTimeoutRef = useRef(null);
+            const refreshIntervalRef = useRef(null);
+
+            // Search for stations
+            useEffect(() => {
+                if (searchQuery.length < 2) {
+                    setSuggestions([]);
+                    return;
+                }
+
+                if (searchTimeoutRef.current) {
+                    clearTimeout(searchTimeoutRef.current);
+                }
+
+                searchTimeoutRef.current = setTimeout(async () => {
+                    try {
+                        setError(null);
+                        const response = await fetch(
+                            `https://transport.opendata.ch/v1/locations?query=${encodeURIComponent(searchQuery)}&type=station`
+                        );
+
+                        if (!response.ok) {
+                            throw new Error(`API error: ${response.status}`);
+                        }
+
+                        const data = await response.json();
+                        setSuggestions(data.stations || []);
+                        setShowSuggestions(true);
+                    } catch (error) {
+                        console.error('Error fetching stations:', error);
+                        setError('Unable to search for stations. Please try again.');
+                        setSuggestions([]);
+                    }
+                }, 300);
+            }, [searchQuery]);
+
+            // Fetch departures
+            const fetchDepartures = async (station) => {
+                setLoading(true);
+                setError(null);
+                try {
+                    const response = await fetch(
+                        `https://transport.opendata.ch/v1/stationboard?station=${encodeURIComponent(station.name)}&limit=20`
+                    );
+
+                    if (!response.ok) {
+                        throw new Error(`API error: ${response.status}`);
+                    }
+
+                    const data = await response.json();
+                    setDepartures(data.stationboard || []);
+                } catch (error) {
+                    console.error('Error fetching departures:', error);
+                    setError('Unable to load departures. Please try again.');
+                    setDepartures([]);
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            // Auto-refresh departures
+            useEffect(() => {
+                if (selectedStation) {
+                    fetchDepartures(selectedStation);
+                    
+                    refreshIntervalRef.current = setInterval(() => {
+                        fetchDepartures(selectedStation);
+                    }, 60000); // Refresh every minute
+                }
+
+                return () => {
+                    if (refreshIntervalRef.current) {
+                        clearInterval(refreshIntervalRef.current);
+                    }
+                };
+            }, [selectedStation]);
+
+            const handleStationSelect = (station) => {
+                setSelectedStation(station);
+                setSearchQuery('');
+                setSuggestions([]);
+                setShowSuggestions(false);
+            };
+
+            const handleBack = () => {
+                setSelectedStation(null);
+                setDepartures([]);
+            };
+
+            const getTransportIcon = (category) => {
+                const cat = category?.toUpperCase() || '';
+                if (cat.includes('BUS')) return { class: 'icon-bus', emoji: '🚌' };
+                if (cat.includes('TRAM') || cat === 'T') return { class: 'icon-tram', emoji: '🚊' };
+                if (cat.includes('SHIP') || cat === 'BAT') return { class: 'icon-ship', emoji: '⛴️' };
+                if (cat.includes('FUN') || cat.includes('GB')) return { class: 'icon-cablecar', emoji: '🚡' };
+                if (cat.match(/^(S|IC|IR|RE|PE|R|D|EC|TGV|RJX|ICE)/)) return { class: 'icon-train', emoji: '🚆' };
+                return { class: 'icon-default', emoji: '🚇' };
+            };
+
+            const getTimeUntil = (departureTime) => {
+                const now = new Date();
+                const departure = new Date(departureTime);
+                const diff = Math.floor((departure - now) / 1000 / 60);
+                
+                if (diff < 0) return 'Departed';
+                if (diff === 0) return 'Now';
+                if (diff === 1) return '1 min';
+                return `${diff} min`;
+            };
+
+            const formatTime = (dateString) => {
+                const date = new Date(dateString);
+                return date.toLocaleTimeString('de-CH', { hour: '2-digit', minute: '2-digit' });
+            };
+
+            return (
+                <div className="container">
+                    <div className="header">
+                        <h1>🚆 SBB Departures</h1>
+                        <p>Real-time Swiss public transport information</p>
+                    </div>
+
+                    <div className="card">
+                        {!selectedStation ? (
+                            <div className="search-section">
+                                <div className="search-box">
+                                    <input
+                                        type="text"
+                                        className="search-input"
+                                        placeholder="Search for a station (e.g., Zürich HB, Bern, Basel)..."
+                                        value={searchQuery}
+                                        onChange={(e) => setSearchQuery(e.target.value)}
+                                        onFocus={() => setShowSuggestions(true)}
+                                    />
+                                    {showSuggestions && suggestions.length > 0 && (
+                                        <div className="suggestions">
+                                            {suggestions.map((station, index) => (
+                                                <div
+                                                    key={index}
+                                                    className="suggestion-item"
+                                                    onClick={() => handleStationSelect(station)}
+                                                >
+                                                    <div className="suggestion-name">{station.name}</div>
+                                                    {station.coordinate?.x && station.coordinate?.y && (
+                                                        <div className="suggestion-location">
+                                                            {station.coordinate.x.toFixed(4)}, {station.coordinate.y.toFixed(4)}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                                {error && (
+                                    <div className="error-message">
+                                        <div className="error-icon">⚠️</div>
+                                        <div>{error}</div>
+                                    </div>
+                                )}
+                            </div>
+                        ) : (
+                            <>
+                                <div className="selected-station">
+                                    <h2>{selectedStation.name}</h2>
+                                    <button className="refresh-button" onClick={handleBack}>
+                                        ← Change Station
+                                    </button>
+                                    <button className="refresh-button" onClick={() => fetchDepartures(selectedStation)} style={{marginLeft: '10px'}}>
+                                        🔄 Refresh
+                                    </button>
+                                </div>
+
+                                <div className="departures-section">
+                                    {error && (
+                                        <div className="error-message">
+                                            <div className="error-icon">⚠️</div>
+                                            <div>{error}</div>
+                                        </div>
+                                    )}
+                                    {loading ? (
+                                        <div className="loading">
+                                            <div className="spinner"></div>
+                                            <p>Loading departures...</p>
+                                        </div>
+                                    ) : departures.length === 0 && !error ? (
+                                        <div className="empty-state">
+                                            <div className="empty-state-icon">🚫</div>
+                                            <p>No departures found</p>
+                                        </div>
+                                    ) : (
+                                        <ul className="departure-list">
+                                            {departures.map((departure, index) => {
+                                                const icon = getTransportIcon(departure.category);
+                                                const actualDeparture = departure.stop.prognosis?.departure || departure.stop.departure;
+                                                const isDelayed = departure.stop.prognosis?.departure && 
+                                                                departure.stop.prognosis.departure !== departure.stop.departure;
+                                                
+                                                return (
+                                                    <li key={index} className="departure-item">
+                                                        <div className={`transport-icon ${icon.class}`}>
+                                                            <span style={{fontSize: '24px'}}>{icon.emoji}</span>
+                                                        </div>
+                                                        <div className="departure-info">
+                                                            <div className="line-number">
+                                                                {departure.category} {departure.number}
+                                                            </div>
+                                                            <div className="destination">
+                                                                → {departure.to}
+                                                            </div>
+                                                            {departure.stop.platform && (
+                                                                <div className="platform">
+                                                                    Platform {departure.stop.platform}
+                                                                </div>
+                                                            )}
+                                                            {isDelayed && (
+                                                                <div className="delay">
+                                                                    ⚠ Delayed
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                        <div className="time-info">
+                                                            <div className="departure-time">
+                                                                {formatTime(actualDeparture)}
+                                                            </div>
+                                                            <div className="time-until">
+                                                                {getTimeUntil(actualDeparture)}
+                                                            </div>
+                                                        </div>
+                                                    </li>
+                                                );
+                                            })}
+                                        </ul>
+                                    )}
+                                </div>
+                            </>
+                        )}
+                    </div>
+                </div>
+            );
+        }
+
+        ReactDOM.render(<TransportApp />, document.getElementById('root'));
+    </script>
+</body>
+</html>

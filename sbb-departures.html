@@ -515,8 +515,8 @@
                                             {departures.map((departure, index) => {
                                                 const icon = getTransportIcon(departure.category);
                                                 const actualDeparture = departure.stop.prognosis?.departure || departure.stop.departure;
-                                                const isDelayed = departure.stop.prognosis?.departure && 
-                                                                departure.stop.prognosis.departure !== departure.stop.departure;
+                                                const delay = departure.stop.delay || 0;
+                                                const isDelayed = delay > 0;
                                                 
                                                 return (
                                                     <li key={index} className="departure-item">
@@ -537,13 +537,14 @@
                                                             )}
                                                             {isDelayed && (
                                                                 <div className="delay">
-                                                                    ⚠ Delayed
+                                                                    ⚠ Delayed {departure.stop.delay}'
                                                                 </div>
                                                             )}
                                                         </div>
                                                         <div className="time-info">
                                                             <div className="departure-time">
-                                                                {formatTime(actualDeparture)}
+                                                                {formatTime(departure.stop.departure)}
+                                                                {isDelayed && <span className="delay"> +{delay}'</span>}
                                                             </div>
                                                             <div className="time-until">
                                                                 {getTimeUntil(actualDeparture)}
